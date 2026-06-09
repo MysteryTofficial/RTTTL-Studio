@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="RTTTL Studio - Create, edit, and convert RTTTL ringtone files with a visual piano roll, bidirectional text engine, and audio conversion tools.">
+  <meta name="theme-color" content="#312e81">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RTTTL Studio">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.all.js"></script>
+  <title>RTTTL Studio</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
+    #app {
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+    }
+    header {
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      border-bottom: 1px solid #312e81;
+      padding: 0.5rem 1rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      z-index: 50;
+    }
+    header h1 {
+      font-size: 1.1rem; font-weight: 700;
+      background: linear-gradient(135deg, #06b6d4, #818cf8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      white-space: nowrap;
+    }
+    #piano-roll-scroll-container {
+      overflow: auto; flex: 1; min-height: 0;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 0.5rem;
+    }
+    #piano-roll-canvas { display: block; }
+    .piano-roll-wrapper {
+      flex: 1; display: flex; flex-direction: column; min-height: 0;
+      padding: 0.5rem;
+      background: #0f172a;
+      border-radius: 0.5rem; border: 1px solid #1e293b;
+    }
+    .control-group {
+      background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem;
+      padding: 0.75rem;
+    }
+    .control-group label {
+      display: block; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 0.25rem;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
+      padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 600;
+      border: 1px solid transparent; cursor: pointer; transition: all 0.15s;
+      font-family: inherit;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-cyber {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white; border-color: #6366f1;
+    }
+    .btn-cyber:hover { background: linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow: 0 0 12px rgba(99,102,241,0.4); }
+    .btn-emerald {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: white; border-color: #34d399;
+    }
+    .btn-emerald:hover { box-shadow: 0 0 12px rgba(16,185,129,0.4); }
+    .btn-rose {
+      background: linear-gradient(135deg, #e11d48, #f43f5e);
+      color: white; border-color: #fb7185;
+    }
+    .btn-rose:hover { box-shadow: 0 0 12px rgba(244,63,94,0.4); }
+    .btn-amber {
+      background: linear-gradient(135deg, #d97706, #f59e0b);
+      color: white; border-color: #fbbf24;
+    }
+    .btn-amber:hover { box-shadow: 0 0 12px rgba(245,158,11,0.4); }
+    .btn-slate {
+      background: #334155; color: #e2e8f0; border-color: #475569;
+    }
+    .btn-slate:hover { background: #475569; }
+    .btn-ghost {
+      background: transparent; color: #94a3b8; border-color: #475569;
+    }
+    .btn-ghost:hover { background: #1e293b; color: #e2e8f0; }
+    .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+    .btn-icon { padding: 0.4rem 0.5rem; font-size: 1rem; line-height: 1; }
+    .playing {
+      background: linear-gradient(135deg, #059669, #10b981) !important;
+      box-shadow: 0 0 16px rgba(16,185,129,0.5) !important;
+    }
+    textarea, input, select {
+      background: #0f172a; border: 1px solid #334155; border-radius: 0.375rem;
+      color: #e2e8f0; padding: 0.4rem 0.6rem; font-size: 0.8rem;
+      font-family: 'Courier New', monospace; outline: none; transition: border-color 0.15s;
+    }
+    textarea:focus, input:focus, select:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+    select { font-family: inherit; cursor: pointer; }
+    input[type="range"] {
+      -webkit-appearance: none; appearance: none; height: 4px;
+      background: #334155; border-radius: 2px; border: none; padding: 0;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 14px; height: 14px;
+      background: #6366f1; border-radius: 50%; cursor: pointer;
+      border: 2px solid #818cf8;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 14px; height: 14px; background: #6366f1; border-radius: 50%;
+      cursor: pointer; border: 2px solid #818cf8;
+    }
+    #midi-drop-zone {
+      border: 2px dashed #475569; border-radius: 0.5rem;
+      padding: 1rem; text-align: center; cursor: pointer;
+      transition: all 0.2s; font-size: 0.75rem; color: #94a3b8;
+    }
+    #midi-drop-zone:hover { border-color: #818cf8; color: #e2e8f0; background: #1e293b; }
+    .tab-btn {
+      padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 600;
+      border: 1px solid #334155; background: #1e293b; color: #94a3b8;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .tab-btn:first-child { border-radius: 0.375rem 0 0 0.375rem; }
+    .tab-btn:last-child { border-radius: 0 0.375rem 0.375rem 0; }
+    .tab-btn.active { background: #4f46e5; color: white; border-color: #6366f1; }
+    .tab-btn:hover:not(.active) { background: #334155; color: #e2e8f0; }
+    @media (max-width: 768px) {
+      header h1 { font-size: 0.9rem; }
+      .control-group { padding: 0.5rem; }
+      .btn { padding: 0.4rem 0.7rem; font-size: 0.7rem; }
+    }
+    .glow-text { text-shadow: 0 0 8px rgba(6,182,212,0.3); }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 4px rgba(99,102,241,0.3); }
+      50% { box-shadow: 0 0 12px rgba(99,102,241,0.6); }
+    }
+    .pulse-border { animation: pulse-glow 2s ease-in-out infinite; }
+    .badge {
+      display: inline-flex; align-items: center; padding: 0.15rem 0.5rem;
+      border-radius: 9999px; font-size: 0.65rem; font-weight: 600;
+    }
+    #install-btn {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="flex items-center gap-2">
+        <span class="text-xl" style="filter: drop-shadow(0 0 6px rgba(6,182,212,0.5));">🎹</span>
+        <h1>RTTTL Studio</h1>
+        <span id="note-count" class="badge bg-slate-800 text-slate-400 border border-slate-700 ml-2">0 notes</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-load-example" class="btn btn-ghost btn-sm" title="Load random example">🎲 Example</button>
+        <button id="install-btn" class="btn btn-cyber btn-sm pulse-border">
+          ⬇ Install App
+        </button>
+      </div>
+    </header>
+
+    <div class="flex-1 flex flex-col lg:flex-row gap-3 p-3 min-h-0 overflow-hidden">
+      <div class="flex-1 flex flex-col min-h-0 lg:w-3/5">
+        <div class="piano-roll-wrapper">
+          <div class="flex items-center gap-2 mb-2 flex-shrink-0">
+            <div class="flex items-center gap-1.5">
+              <button id="btn-play" class="btn btn-emerald btn-icon" title="Play / Pause (Space)">▶</button>
+              <button id="btn-stop" class="btn btn-rose btn-icon" title="Stop (P)">⏹</button>
+            </div>
+            <div class="flex items-center gap-2 ml-2">
+              <label class="text-xs text-slate-400 font-semibold">BPM</label>
+              <input type="range" id="bpm-slider" min="40" max="300" value="120" class="w-20 lg:w-28">
+              <span id="bpm-display" class="text-sm font-mono text-cyan-400 w-8">120</span>
+            </div>
+            <div class="flex items-center gap-2 ml-2">
+              <label class="text-xs text-slate-400 font-semibold">Dur</label>
+              <select id="default-duration" class="text-xs py-1 px-1.5">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="4" selected>4</option>
+                <option value="8">8</option>
+                <option value="16">16</option>
+                <option value="32">32</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2 ml-2">
+              <label class="text-xs text-slate-400 font-semibold">Scale</label>
+              <select id="scale-select" class="text-xs py-1 px-1.5">
+                <option value="chromatic">Chromatic</option>
+                <option value="major">Major</option>
+                <option value="minor">Minor</option>
+                <option value="pentatonic">Pentatonic</option>
+              </select>
+            </div>
+            <button id="btn-clear" class="btn btn-ghost btn-sm ml-auto">✕ Clear</button>
+          </div>
+          <div id="piano-roll-scroll-container" class="rounded-lg overflow-auto">
+            <canvas id="piano-roll-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:w-2/5 flex flex-col gap-3 min-h-0 overflow-y-auto">
+        <div class="control-group flex-shrink-0">
+          <label>RTTTL String</label>
+          <textarea id="rtttl-input" class="w-full h-20 resize-none text-xs leading-relaxed" spellcheck="false"
+            placeholder="Paste RTTTL string here, e.g. Smarts:d=4,o=5,b=125:8c,8d,8e,8f,4g,4g"></textarea>
+          <div class="flex items-center justify-between mt-1.5">
+            <div class="flex items-center gap-1.5">
+              <button id="btn-parse" class="btn btn-cyber btn-sm">⟳ Parse & Import</button>
+            </div>
+            <span id="validation-status" class="text-xs font-mono text-slate-500">Ready</span>
+          </div>
+        </div>
+
+        <div class="control-group flex-shrink-0">
+          <label>Transport & Status</label>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1">
+              <span class="text-xs text-slate-400">Duration:</span>
+              <span class="text-xs text-cyan-400" id="duration-display">--</span>
+            </div>
+            <span id="status-message" class="text-sm font-mono text-slate-500">Ready</span>
+          </div>
+        </div>
+
+        <div class="control-group flex-shrink-0">
+          <label>Audio Export</label>
+          <div class="flex items-center gap-2">
+            <button id="btn-export-wav" class="btn btn-cyber btn-sm flex-1">⬇ Export WAV</button>
+            <button id="btn-export-mp3" class="btn btn-cyber btn-sm flex-1">⬇ Export MP3</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>MIDI to RTTTL</label>
+          <div id="midi-drop-zone">
+            <div class="text-lg mb-1">🎹</div>
+            <div class="font-semibold text-slate-300">Drop MIDI file here</div>
+            <div class="text-xs text-slate-500 mt-1">or click to browse (.mid files, max 500KB)</div>
+            <input type="file" id="midi-file-input" accept=".mid,.midi" class="hidden">
+          </div>
+          <div class="mt-1.5 text-xs text-amber-400/70 leading-tight">
+            ⚠ Converts monophonic melodies best. Polyphonic MIDI will be flattened to sequential notes.
+          </div>
+        </div>
+
+        <div class="control-group flex-shrink-0">
+          <label>Keyboard Shortcuts</label>
+          <div class="text-xs text-slate-500 space-y-0.5">
+            <div><kbd class="px-1 py-0.5 bg-slate-800 rounded text-xs font-mono">Space</kbd> Play / Pause</div>
+            <div><kbd class="px-1 py-0.5 bg-slate-800 rounded text-xs font-mono">P</kbd> Stop</div>
+            <div><kbd class="px-1 py-0.5 bg-slate-800 rounded text-xs font-mono">Left-click</kbd> Add note</div>
+            <div><kbd class="px-1 py-0.5 bg-slate-800 rounded text-xs font-mono">Right-click</kbd> Remove note</div>
+            <div><kbd class="px-1 py-0.5 bg-slate-800 rounded text-xs font-mono">Drag</kbd> Resize note</div>
+            <div><kbd class="px-1 py-0.5 bg-slate-800 rounded text-xs font-mono">Vel lane</kbd> Click/drag to adjust velocity</div>
+            <div><kbd class="px-1 py-0.5 bg-slate-800 rounded text-xs font-mono">Vel RC</kbd> Right-click velocity bar to reset</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="flex-shrink-0 border-t border-slate-800 bg-slate-900/50 px-3 py-1.5 text-center">
+    <span class="text-xs text-slate-500">
+      <span class="text-cyan-400 font-semibold">RTTTL Studio</span>
+      <span class="text-slate-600 mx-1.5">v1.0.0</span>
+      <span class="text-slate-600 mx-1">|</span>
+      <span>Made by <span class="text-indigo-400 font-medium">MysteryT</span></span>
+    </span>
+  </footer>
+
+  <script src="js/rtttl-engine.js"></script>
+  <script src="js/audio-engine.js"></script>
+  <script src="js/midi-parser.js"></script>
+  <script src="js/piano-roll.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => {
+          console.warn('SW registration failed:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

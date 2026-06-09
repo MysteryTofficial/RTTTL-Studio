@@ -1,0 +1,31 @@
+{
+  "name": "RTTTL Studio",
+  "short_name": "RTTTL Studio",
+  "description": "A complete development environment for creating, editing, and converting RTTTL ringtone files. Features a visual piano roll, bidirectional text engine, and audio conversion tools.",
+  "start_url": "/RTTTL/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#312e81",
+  "orientation": "any",
+  "categories": ["music", "productivity", "utilities"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "scope": "/RTTTL/",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false,
+  "related_applications": []
+}
